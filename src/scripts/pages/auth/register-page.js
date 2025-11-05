@@ -1,11 +1,11 @@
-import { registerUser } from '../../data/api';
+import { registerUser } from "../../data/api";
 
 export default class RegisterPage {
   async render() {
     return `
       <section class="auth-container">
         <div class="auth-card">
-          <h2 class="auth-title">Create account</h2>
+          <h1 class="auth-title">Create account</h1>
           <p class="auth-sub">Register a new account to post stories</p>
           <form id="register-form">
             <div class="form-row">
@@ -30,31 +30,37 @@ export default class RegisterPage {
     `;
   }
 
-  async afterRender() {
-    const form = document.getElementById('register-form');
-    const messageEl = document.getElementById('register-message');
+  async afterRender(pageElement) {
+    const form = pageElement.querySelector("#register-form");
+    const messageEl = pageElement.querySelector("#register-message");
 
-    form.addEventListener('submit', async (e) => {
+    if (!form || !messageEl) {
+      console.error("Register form elements not found on the page!");
+      return;
+    }
+
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      messageEl.textContent = '';
-      const name = document.getElementById('name').value.trim();
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
+      messageEl.textContent = "";
+
+      const name = form.elements.name.value.trim();
+      const email = form.elements.email.value.trim();
+      const password = form.elements.password.value;
 
       try {
         const res = await registerUser({ name, email, password });
         if (res && res.error === false) {
-          messageEl.style.color = 'green';
-          messageEl.textContent = 'Registration successful. You can now login.';
-          if (window.showToast) window.showToast('Registration successful');
+          messageEl.style.color = "green";
+          messageEl.textContent = "Registration successful. You can now login.";
+          if (window.showToast) window.showToast("Registration successful");
         } else {
-          messageEl.style.color = 'red';
-          messageEl.textContent = (res && res.message) || 'Registration failed';
+          messageEl.style.color = "red";
+          messageEl.textContent = (res && res.message) || "Registration failed";
           if (window.showToast) window.showToast(messageEl.textContent);
         }
       } catch (err) {
-        messageEl.style.color = 'red';
-        messageEl.textContent = 'Registration error: ' + err.message;
+        messageEl.style.color = "red";
+        messageEl.textContent = "Registration error: " + err.message;
       }
     });
   }

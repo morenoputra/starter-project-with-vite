@@ -1,0 +1,49 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>SW Debug — StoryMap</title>
+    <style>body{font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;padding:16px}pre{background:#f5f5f5;padding:12px;border-radius:6px}</style>
+  </head>
+  <body>
+    <h1>Service Worker Debug</h1>
+    <p>This page helps verify Service Worker registration and push subscription state.</p>
+    <div>
+      <button id="check-sw">Check SW Registration</button>
+      <button id="get-sub">Get Push Subscription</button>
+      <button id="trigger-notif">Trigger Test Notification</button>
+    </div>
+    <h2>Output</h2>
+    <pre id="out">Idle</pre>
+    <script>
+      const out = document.getElementById('out');
+      function log(v) { out.textContent = JSON.stringify(v, null, 2); }
+      document.getElementById('check-sw').addEventListener('click', async () => {
+        if (!('serviceWorker' in navigator)) return log({error:'serviceWorker not supported'});
+        const regs = await navigator.serviceWorker.getRegistrations();
+        log({registrations: regs.map(r => ({scope: r.scope}))});
+      });
+      document.getElementById('get-sub').addEventListener('click', async () => {
+        if (!('serviceWorker' in navigator)) return log({error:'serviceWorker not supported'});
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (!reg) return log({error:'no registration'});
+        try {
+          const sub = await reg.pushManager.getSubscription();
+          log({subscription: sub ? sub.toJSON() : null});
+        } catch (err) { log({error: err.message}); }
+      });
+      document.getElementById('trigger-notif').addEventListener('click', async () => {
+        if (!('Notification' in window)) return log({error:'Notifications not supported'});
+        const perm = await Notification.requestPermission();
+        if (perm !== 'granted') return log({error:'permission not granted'});
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (!reg) return log({error:'no registration'});
+        try {
+          await reg.showNotification('StoryMap Debug', { body: 'Test from debug page', icon: '/icons/icon-192.svg' });
+          log({status: 'notification shown'});
+        } catch (err) { log({error: err.message}); }
+      });
+    </script>
+  </body>
+</html>

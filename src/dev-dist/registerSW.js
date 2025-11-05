@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) navigator.serviceWorker.register('/starter-project-with-vite/dev-sw.js?dev-sw', { scope: '/starter-project-with-vite/', type: 'classic' })

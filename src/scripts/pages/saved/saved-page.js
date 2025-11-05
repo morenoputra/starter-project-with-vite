@@ -10,21 +10,30 @@ export default class SavedPage {
     `;
   }
 
-  async afterRender() {
-    const listEl = document.getElementById('saved-list');
+  async afterRender(pageElement) {
+    const listEl = pageElement.querySelector('#saved-list');
+
+    if (!listEl) {
+      console.error('Saved list element not found on page');
+      return;
+    }
+
     listEl.innerHTML = '<p>Loading saved stories…</p>';
+
     try {
       const items = await getSavedStories();
       if (!items.length) {
         listEl.innerHTML = '<p>No saved stories yet.</p>';
         return;
       }
+
       listEl.innerHTML = '';
       items.forEach((story) => {
         const item = document.createElement('div');
         item.className = 'saved-item';
         item.style.padding = '8px';
         item.style.borderBottom = '1px solid #eee';
+
         item.innerHTML = `
           <div style="display:flex;gap:8px;align-items:center">
             <img src="${story.photoUrl}" alt="${story.name}" style="width:64px;height:64px;object-fit:cover;border-radius:6px;" />
@@ -35,8 +44,10 @@ export default class SavedPage {
             </div>
           </div>
         `;
+
         const actions = document.createElement('div');
         actions.style.marginTop = '8px';
+
         const delBtn = document.createElement('button');
         delBtn.textContent = 'Delete';
         delBtn.onclick = async () => {
@@ -44,6 +55,7 @@ export default class SavedPage {
           if (window.showToast) window.showToast('Deleted saved story');
           item.remove();
         };
+
         actions.appendChild(delBtn);
         item.appendChild(actions);
         listEl.appendChild(item);

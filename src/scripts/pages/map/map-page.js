@@ -53,8 +53,33 @@ export default class MapPage {
       return;
     }
 
-    // Set default view
-    this._map = L.map("map").setView([0, 0], 2);
+    // Ensure the map container element exists in the DOM. Sometimes
+    // the view transition / DOM swap can race with map initialization,
+    // causing Leaflet to throw "Map container not found.". Try a few
+    // short retries and then initialize with the actual element.
+    const getMapEl = () => document.getElementById('map');
+    let mapEl = getMapEl();
+    const maxRetries = 8;
+    let attempt = 0;
+    while (!mapEl && attempt < maxRetries) {
+      // small delay to allow DOM to settle (50ms * up to 8 = 400ms)
+      // this avoids blocking UI for long while being resilient.
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((r) => setTimeout(r, 50));
+      mapEl = getMapEl();
+      attempt += 1;
+    }
+
+    if (!mapEl) {
+      const el = document.getElementById('story-list') || document.getElementById('main-content') || document.body;
+      el.innerHTML = '<p>Map container not found in the document. Please refresh the page.</p>';
+      console.error('Map container (#map) not found after retries. Aborting map initialization.');
+      return;
+    }
+
+    // Initialize map with the element reference to avoid Leaflet resolving
+    // the element by id internally (more robust in race scenarios).
+    this._map = L.map(mapEl).setView([0, 0], 2);
 
     // Tile layers: OSM and Carto (two layers for control)
     const osm = L.tileLayer(
