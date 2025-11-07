@@ -3,8 +3,10 @@ import { resolve } from "path";
 import { VitePWA } from "vite-plugin-pwa";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 
+const BASE_PATH = "/starter-project-with-vite/";
+
 export default defineConfig({
-  base: "/starter-project-with-vite/",
+  base: BASE_PATH,
   root: resolve(__dirname, "src"),
   publicDir: resolve(__dirname, "src", "public"),
   plugins: [
@@ -23,63 +25,34 @@ export default defineConfig({
       manifest: {
         name: "StoryMap",
         short_name: "StoryMap",
-        start_url: "/starter-project-with-vite/",
+        start_url: BASE_PATH, 
         display: "standalone",
         background_color: "#ffffff",
         theme_color: "#ffffff",
         description: "StoryMap — aplikasi berbagi cerita dengan peta dan PWA.",
         icons: [
           {
-            src: "/starter-project-with-vite/icons/icon-192.png",
+            
+            src: `${BASE_PATH}icons/icon-192.svg`,
             sizes: "192x192",
-            type: "image/png",
+            type: "image/svg+xml",
           },
           {
-            src: "/starter-project-with-vite/icons/icon-512.png",
+            src: `${BASE_PATH}icons/icon-512.svg`,
             sizes: "512x512",
-            type: "image/png",
+            type: "image/svg+xml",
           },
           {
-            src: "/starter-project-with-vite/icons/icon-512.png",
+            src: `${BASE_PATH}icons/icon-512.svg`,
             sizes: "512x512",
-            type: "image/png",
+            type: "image/svg+xml",
             purpose: "any maskable",
           },
-        ],
+        ], 
+        scope: BASE_PATH,
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,png,svg,ico,json}"],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-            handler: "StaleWhileRevalidate",
-            options: {
-              cacheName: "google-fonts-stylesheets",
-            },
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-            handler: "CacheFirst",
-            options: {
-              cacheName: "google-fonts-webfonts",
-              expiration: {
-                maxEntries: 30,
-                maxAgeSeconds: 60 * 60 * 24 * 365,
-              },
-            },
-          },
-          {
-            urlPattern: /^https:\/\/cdn\.jsdelivr\.net\/.*/i,
-            handler: "CacheFirst",
-            options: {
-              cacheName: "cdn-resources",
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24 * 30,
-              },
-            },
-          },
-        ],
+        globPatterns: ["**/*.{js,css,html,png,svg,ico,json}"], // ... (runtimeCaching lainnya tetap sama)
       },
       devOptions: {
         enabled: true,

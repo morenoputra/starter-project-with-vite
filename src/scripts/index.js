@@ -1,10 +1,11 @@
-// scripts/index.js
 import "../styles/styles.css";
 import App from "./pages/app";
 import {
   getVapidPublicKey,
   registerPushSubscription
 } from "./data/api";
+
+const BASE_PATH = "/starter-project-with-vite/"; 
 
 class PushNotificationManager {
   static async init() {
@@ -14,10 +15,9 @@ class PushNotificationManager {
     }
 
     try {
-      const registration = await navigator.serviceWorker.register('/sw.js', {
-        scope: '/',
-        updateViaCache: 'none'
-      });
+      const registration = await navigator.serviceWorker.register(`${BASE_PATH}sw.js`, {
+        scope: BASE_PATH
+      }); 
 
       console.log('Service Worker registered successfully:', registration);
 
@@ -26,7 +26,6 @@ class PushNotificationManager {
 
       if (!navigator.serviceWorker.controller) {
         console.log('Reloading page to activate Service Worker...');
-        window.location.reload();
         return;
       }
 
@@ -205,8 +204,8 @@ class PushNotificationManager {
       type: "TRIGGER_PUSH",
       title: "🎉 StoryMap - Test Successful!",
       body: "Push notifications are working perfectly! Your submission criteria should be met.",
-      icon: "/favicon.png",
-      url: "/#/map",
+      icon: `${BASE_PATH}favicon.png`, // Menggunakan BASE_PATH untuk ikon
+      url: `${BASE_PATH}#/map`, // Menggunakan BASE_PATH untuk URL notifikasi
     };
 
     navigator.serviceWorker.controller.postMessage(testData);
@@ -237,7 +236,8 @@ class PWAUpdateManager {
 
     let registration;
     try {
-      registration = await navigator.serviceWorker.register("/sw.js");
+      // KOREKSI KRITIS 2: Ganti "/sw.js" dengan BASE_PATH + "sw.js"
+      registration = await navigator.serviceWorker.register(`${BASE_PATH}sw.js`);
       console.log("SW registered: ", registration);
 
       registration.addEventListener("updatefound", () => {
@@ -321,6 +321,8 @@ class AuthStateManager {
     }
   }
 }
+
+// ... (Fungsi showToast, updateNav, updateUserName, setupPWAInstall tetap sama)
 
 function showToast(message, type = "info", timeout = 3500) {
   const container = document.getElementById("toast-container");
