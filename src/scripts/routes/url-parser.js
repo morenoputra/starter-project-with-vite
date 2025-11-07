@@ -25,11 +25,6 @@ export function getActivePathname() {
   return location.hash.replace('#', '') || '/';
 }
 
-export function getActiveRoute() {
-  const pathname = getActivePathname();
-  const urlSegments = extractPathnameSegments(pathname);
-  return constructRouteFromSegments(urlSegments);
-}
 
 export function parseActivePathname() {
   const pathname = getActivePathname();
@@ -44,3 +39,8 @@ export function getRoute(pathname) {
 export function parsePathname(pathname) {
   return extractPathnameSegments(pathname);
 }
+
+export const getActiveRoute = () => {
+  const hash = window.location.hash.replace('#', '');
+  return hash || '/';
+};

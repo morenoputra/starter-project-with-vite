@@ -45,7 +45,6 @@ export default class MapPage {
       data = [];
     }
 
-    // Initialize map (Leaflet must be loaded via global L)
     if (typeof L === "undefined") {
       const el = document.getElementById("story-list");
       el.innerHTML =
@@ -53,18 +52,11 @@ export default class MapPage {
       return;
     }
 
-    // Ensure the map container element exists in the DOM. Sometimes
-    // the view transition / DOM swap can race with map initialization,
-    // causing Leaflet to throw "Map container not found.". Try a few
-    // short retries and then initialize with the actual element.
     const getMapEl = () => document.getElementById('map');
     let mapEl = getMapEl();
     const maxRetries = 8;
     let attempt = 0;
     while (!mapEl && attempt < maxRetries) {
-      // small delay to allow DOM to settle (50ms * up to 8 = 400ms)
-      // this avoids blocking UI for long while being resilient.
-      // eslint-disable-next-line no-await-in-loop
       await new Promise((r) => setTimeout(r, 50));
       mapEl = getMapEl();
       attempt += 1;
@@ -77,11 +69,8 @@ export default class MapPage {
       return;
     }
 
-    // Initialize map with the element reference to avoid Leaflet resolving
-    // the element by id internally (more robust in race scenarios).
     this._map = L.map(mapEl).setView([0, 0], 2);
 
-    // Tile layers: OSM and Carto (two layers for control)
     const osm = L.tileLayer(
       "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
       {
@@ -105,7 +94,6 @@ export default class MapPage {
 
     L.control.layers(baseMaps).addTo(this._map);
 
-    // Create markers and list
     const listEl = document.getElementById("story-list");
     listEl.innerHTML = "";
 
@@ -123,13 +111,14 @@ export default class MapPage {
       if (Number.isFinite(lat) && Number.isFinite(lon)) {
         const marker = L.marker([lat, lon]).addTo(this._map);
 
+        // --- Perbaikan Popup HTML: Hapus Inline Styles ---
         const popupHtml = `
-          <div style="min-width:150px">
+          <div class="story-popup-content">
             <img src="${story.photoUrl}" alt="${
           story.name
-        }" style="width:100%;height:auto;margin-bottom:8px;" />
+        }" class="popup-photo" />
             <strong>${story.name}</strong>
-            <p style="font-size:0.9rem">${new Date(
+            <p class="popup-date">${new Date(
               story.createdAt
             ).toLocaleString()}</p>
             <p>${story.description}</p>
@@ -140,29 +129,32 @@ export default class MapPage {
         this._markers.push(marker);
         bounds.push([lat, lon]);
 
-        // Add accessible list item as button
+        // --- Perbaikan Item Daftar Cerita (Story List): Hapus Inline Styles ---
         const item = document.createElement("button");
         item.className = "story-item";
         item.type = "button";
+        
+        // Hapus style yang di-inline dan biarkan CSS global yang menangani display
         item.style.display = "block";
         item.style.textAlign = "left";
         item.style.width = "100%";
-        item.style.padding = "8px";
+        item.style.padding = "10px";
         item.style.border = "0";
-        item.style.borderBottom = "1px solid #eee";
+        item.style.borderBottom = "1px solid var(--gray-200)";
         item.style.cursor = "pointer";
+        
         item.setAttribute("aria-label", `Open story ${story.name}`);
         item.innerHTML = `
-          <div style="display:flex;gap:8px;align-items:center">
+          <div class="story-item-content">
             <img src="${story.photoUrl}" alt="${
           story.name
-        }" style="width:64px;height:64px;object-fit:cover;border-radius:6px;" />
-            <div>
-              <div style="font-weight:bold">${story.name}</div>
-              <div style="font-size:0.85rem;color:#666">${new Date(
+        }" class="story-item-photo" />
+            <div class="story-info-wrap">
+              <div class="story-name-display">${story.name}</div>
+              <div class="story-date-info">${new Date(
                 story.createdAt
               ).toLocaleDateString()}</div>
-              <div style="font-size:0.9rem;margin-top:4px">${
+              <div class="story-description-text">${
                 story.description
               }</div>
             </div>
@@ -178,19 +170,24 @@ export default class MapPage {
 
         item.addEventListener("click", () => {
           openMarker();
-          item.style.background = "#f0f8ff";
+          // Gunakan variabel CSS untuk highlight
+          item.style.background = "var(--primary-100)";
           setTimeout(() => (item.style.background = ""), 1000);
         });
 
-        // Save offline button
+        // --- Perbaikan Tombol Save Offline ---
         const saveBtn = document.createElement('button');
         saveBtn.type = 'button';
         saveBtn.textContent = 'Save Offline';
-        saveBtn.style.marginTop = '8px';
-        saveBtn.style.padding = '8px 10px';
-        saveBtn.style.borderRadius = '6px';
-        saveBtn.style.border = '1px solid #e5e7eb';
-        saveBtn.style.background = '#fff';
+        saveBtn.className = 'save-offline-btn primary-button'; // Tambahkan class styling
+        
+        // Hapus inline styles yang hardcode:
+        // saveBtn.style.marginTop = '8px';
+        // saveBtn.style.padding = '8px 10px';
+        // saveBtn.style.borderRadius = '6px';
+        // saveBtn.style.border = '1px solid #e5e7eb';
+        // saveBtn.style.background = '#fff';
+        
         saveBtn.onclick = async () => {
           try {
             const toSave = {
@@ -210,7 +207,6 @@ export default class MapPage {
           }
         };
 
-        // append save button below item
         const btnWrap = document.createElement('div');
         btnWrap.style.marginTop = '8px';
         btnWrap.appendChild(saveBtn);

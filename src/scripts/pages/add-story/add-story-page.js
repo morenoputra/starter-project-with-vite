@@ -6,6 +6,7 @@ export default class AddStoryPage {
     this._selectedLat = null;
     this._selectedLon = null;
     this._cameraStream = null;
+    this._marker = null;
   }
 
   async render() {
@@ -64,17 +65,39 @@ export default class AddStoryPage {
       return;
     }
 
+    // --- INISIALISASI PETA ---
     this._map = L.map(mapContainer).setView([0, 0], 2);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(this._map);
 
-    let marker = null;
+    // FIX RENDERING PETA: Menggunakan ResizeObserver
+    const observer = new ResizeObserver((entries, obs) => {
+        if (this._map) {
+            const rect = entries[0].contentRect;
+            if (rect.width > 0 && rect.height > 0) {
+                this._map.invalidateSize(true);
+                this._map.setView([0, 0], 2);
+                obs.disconnect(); 
+            }
+        }
+    });
+    observer.observe(mapContainer);
+    
+    // Fallback/Safety Check
+    setTimeout(() => {
+        if (this._map) {
+            this._map.invalidateSize(true);
+        }
+    }, 500);
+
+
     this._map.on("click", (ev) => {
       const { lat, lng } = ev.latlng;
       this._selectedLat = lat;
       this._selectedLon = lng;
       coordsEl.textContent = `Lat: ${lat.toFixed(6)}, Lon: ${lng.toFixed(6)}`;
-      if (marker) marker.setLatLng([lat, lng]);
-      else marker = L.marker([lat, lng]).addTo(this._map);
+      
+      if (this._marker) this._marker.setLatLng([lat, lng]);
+      else this._marker = L.marker([lat, lng]).addTo(this._map);
     });
 
     cameraButton.addEventListener("click", async () => {
@@ -165,6 +188,13 @@ export default class AddStoryPage {
           messageEl.style.color = "green";
           messageEl.textContent = "Story uploaded successfully.";
           if (window.showToast) window.showToast("Story uploaded successfully");
+          
+          if (this._map && this._marker) {
+              this._map.removeLayer(this._marker);
+              this._marker = null;
+              coordsEl.textContent = 'Lat: - , Lon: -';
+          }
+
           form.reset();
           if (this._cameraStream) {
             this._cameraStream.getTracks().forEach((t) => t.stop());

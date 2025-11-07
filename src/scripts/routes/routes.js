@@ -1,16 +1,17 @@
-import MapPage from '../pages/map/map-page';
-import AddStoryPage from '../pages/add-story/add-story-page';
-import LoginPage from '../pages/auth/login-page';
-import RegisterPage from '../pages/auth/register-page';
-import SavedPage from '../pages/saved/saved-page';
+// routes/routes.js - Simple Version
+import LoginPage from "../pages/auth/login-page.js";
+import RegisterPage from "../pages/auth/register-page.js";
+import MapPage from "../pages/map/map-page.js";
+import AddStoryPage from "../pages/add-story/add-story-page.js";
+import SavedPage from "../pages/saved/saved-page.js";
 
 const routes = {
-  '/': new MapPage(),
-  '/map': new MapPage(),
-  '/add': new AddStoryPage(),
-  '/saved': new SavedPage(),
-  '/login': new LoginPage(),
-  '/register': new RegisterPage(),
+  '/': MapPage,
+  '/map': MapPage,
+  '/add': AddStoryPage,
+  '/saved': SavedPage,
+  '/login': LoginPage,
+  '/register': RegisterPage,
 };
 
 export default routes;

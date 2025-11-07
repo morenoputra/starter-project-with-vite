@@ -1,71 +1,168 @@
-import { precacheAndRoute } from "workbox-precaching";
+const CACHE_NAME = 'storymap-v1.0.2';
+const BASE_PATH = '/starter-project-with-vite';
+const urlsToCache = [
+  `${BASE_PATH}/`,
+  `${BASE_PATH}/index.html`,
+  `${BASE_PATH}/styles/styles.css`,
+  `${BASE_PATH}/scripts/index.js`,
+  `${BASE_PATH}/scripts/pages/app.js`,
+  `${BASE_PATH}/scripts/data/api.js`,
+  `${BASE_PATH}/scripts/utils/idb.js`,
+  `${BASE_PATH}/favicon.png`,
+  `${BASE_PATH}/manifest.json`
+];
 
-precacheAndRoute(self.__WB_MANIFEST || []);
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(urlsToCache))
+      .then(() => self.skipWaiting())
+  );
+});
 
-self.addEventListener("push", (event) => {
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) =>
+      Promise.all(
+        cacheNames.map((name) => {
+          if (name !== CACHE_NAME) return caches.delete(name);
+        })
+      )
+    ).then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
+
+  if (event.request.url.includes('/api/')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  event.respondWith(
+    caches.match(event.request)
+      .then((cached) => {
+        if (cached) return cached;
+        return fetch(event.request)
+          .then((response) => {
+            if (!response || response.status !== 200 || response.type !== 'basic') return response;
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+            return response;
+          })
+          .catch(() => {
+            if (event.request.destination === 'document') {
+              return caches.match(`${BASE_PATH}/`);
+            }
+          });
+      })
+  );
+});
+
+self.addEventListener('push', (event) => {
   let payload = {
-    title: "New notification",
-    body: "You have a new message",
-    data: {},
+    title: 'StoryMap - New Story!',
+    body: 'A new journey has been shared on StoryMap.',
+    icon: `${BASE_PATH}/favicon.png`,
+    badge: `${BASE_PATH}/favicon.png`,
+    data: { url: `${BASE_PATH}/#/map` }
   };
 
   if (event.data) {
     try {
-      payload = event.data.json();
-    } catch (err) {
-      payload = { title: "Notification", body: String(event.data), data: {} };
+      const data = event.data.json();
+      payload = { ...payload, ...data };
+    } catch {
+      try {
+        const textData = event.data.text();
+        if (textData) payload.body = textData;
+      } catch {}
     }
   }
 
-  const title = payload.title || "Notification";
   const options = {
-    body: payload.body || "",
-    icon: payload.icon || "/icons/icon-192.svg",
-    badge: payload.badge || "/icons/icon-192.svg",
-    data: payload.data || {},
-    actions: payload.actions || [],
-    tag: payload.tag || undefined,
+    body: payload.body,
+    icon: payload.icon,
+    badge: payload.badge,
+    data: payload.data,
+    actions: [
+      { action: 'view', title: 'View Map', icon: payload.icon },
+      { action: 'close', title: 'Close', icon: payload.icon }
+    ],
+    tag: 'storymap-notification',
+    vibrate: [200, 100, 200],
+    requireInteraction: true
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(
+    self.registration.showNotification(payload.title, options)
+  );
 });
 
-self.addEventListener("notificationclick", (event) => {
-  const notification = event.notification;
-  const action = event.action;
-  const data = notification.data || {};
-  notification.close();
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  if (event.action === 'close') return;
 
-  let urlToOpen = null;
-  if (
-    action &&
-    data &&
-    data.actions &&
-    data.actions[action] &&
-    data.actions[action].url
-  ) {
-    urlToOpen = data.actions[action].url;
-  } else if (data && data.url) {
-    urlToOpen = data.url;
+  const urlToOpen = event.notification.data?.url || `${BASE_PATH}/#/map`;
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientsArr) => {
+      for (const client of clientsArr) {
+        if (client.url.includes(self.location.origin)) {
+          client.postMessage({ type: 'NAVIGATE_TO', path: urlToOpen });
+          return client.focus();
+        }
+      }
+      return clients.openWindow(urlToOpen);
+    })
+  );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'TRIGGER_PUSH') {
+    const { title, body, icon, url } = event.data;
+    const options = {
+      body: body || 'This is a test notification from StoryMap',
+      icon: icon || `${BASE_PATH}/favicon.png`,
+      badge: `${BASE_PATH}/favicon.png`,
+      data: { url: url || `${BASE_PATH}/#/map` },
+      actions: [{ action: 'view', title: 'View Map', icon: icon || `${BASE_PATH}/favicon.png` }],
+      vibrate: [200, 100, 200],
+      tag: 'test-notification'
+    };
+    event.waitUntil(
+      self.registration.showNotification(title || 'StoryMap - Test Notification', options)
+    );
   }
 
-  const defaultUrl = "/";
-
-  const promiseChain = clients
-    .matchAll({ type: "window", includeUncontrolled: true })
-    .then((windowClients) => {
-      if (urlToOpen) {
-        for (let i = 0; i < windowClients.length; i++) {
-          const client = windowClients[i];
-          if (client.url === urlToOpen && "focus" in client) {
-            return client.focus();
-          }
-        }
-        if (clients.openWindow) return clients.openWindow(urlToOpen);
-      }
-      if (windowClients.length > 0) return windowClients[0].focus();
-      return clients.openWindow(defaultUrl);
-    });
-
-  event.waitUntil(promiseChain);
+  if (event.data?.type === 'NEW_STORY') {
+    const { title, body, icon, url, lat, lon } = event.data;
+    const options = {
+      body,
+      icon: icon || `${BASE_PATH}/favicon.png`,
+      badge: `${BASE_PATH}/favicon.png`,
+      data: { url: url || `${BASE_PATH}/#/map`, lat, lon, type: 'new_story' },
+      actions: [
+        { action: 'view_map', title: 'View on Map', icon: icon || `${BASE_PATH}/favicon.png` },
+        { action: 'view_stories', title: 'View Stories', icon: icon || `${BASE_PATH}/favicon.png` }
+      ],
+      vibrate: [200, 100, 200, 100, 200],
+      tag: `story-${Date.now()}`,
+      requireInteraction: false,
+      timestamp: Date.now()
+    };
+    event.waitUntil(
+      self.registration.showNotification(title, options)
+    );
+  }
 });

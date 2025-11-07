@@ -1,7 +1,15 @@
+// pages/auth/register-page.js
 import { registerUser } from "../../data/api";
 
 export default class RegisterPage {
   async render() {
+    // Check if already logged in
+    const token = localStorage.getItem("authToken");
+    if (token) {
+      window.location.hash = "#/map";
+      return '<div>Redirecting to map...</div>';
+    }
+
     return `
       <section class="auth-container">
         <div class="auth-card">
@@ -10,20 +18,26 @@ export default class RegisterPage {
           <form id="register-form">
             <div class="form-row">
               <label for="name">Full name</label>
-              <input id="name" name="name" type="text" required />
+              <input id="name" name="name" type="text" required autocomplete="name" />
             </div>
             <div class="form-row">
               <label for="email">Email</label>
-              <input id="email" name="email" type="email" required />
+              <input id="email" name="email" type="email" required autocomplete="email" />
             </div>
             <div class="form-row">
               <label for="password">Password</label>
-              <input id="password" name="password" type="password" required minlength="8" />
+              <input id="password" name="password" type="password" required minlength="8" autocomplete="new-password" />
             </div>
             <div class="form-row">
-              <button type="submit" class="auth-button">Register</button>
+              <button type="submit" class="auth-button" id="register-button">Register</button>
             </div>
             <div id="register-message" role="status" aria-live="polite" class="form-message"></div>
+            <p style="text-align: center; margin-top: 16px; color: var(--gray-600);">
+              Already have an account? 
+              <a href="#/login" style="color: var(--primary-600); text-decoration: none; font-weight: 500;">
+                Login here
+              </a>
+            </p>
           </form>
         </div>
       </section>
@@ -33,35 +47,81 @@ export default class RegisterPage {
   async afterRender(pageElement) {
     const form = pageElement.querySelector("#register-form");
     const messageEl = pageElement.querySelector("#register-message");
+    const registerButton = pageElement.querySelector("#register-button");
 
     if (!form || !messageEl) {
       console.error("Register form elements not found on the page!");
       return;
     }
 
+    // Double check auth state
+    const token = localStorage.getItem("authToken");
+    if (token) {
+      window.location.hash = "#/map";
+      return;
+    }
+
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       messageEl.textContent = "";
+      messageEl.style.color = "";
 
       const name = form.elements.name.value.trim();
       const email = form.elements.email.value.trim();
       const password = form.elements.password.value;
 
+      if (!name || !email || !password) {
+        this.showMessage("Please fill in all fields", "error", messageEl);
+        return;
+      }
+
+      if (password.length < 8) {
+        this.showMessage("Password must be at least 8 characters", "error", messageEl);
+        return;
+      }
+
       try {
+        // Show loading state
+        registerButton.disabled = true;
+        registerButton.textContent = "Registering...";
+        registerButton.classList.add('loading');
+
         const res = await registerUser({ name, email, password });
+
         if (res && res.error === false) {
-          messageEl.style.color = "green";
-          messageEl.textContent = "Registration successful. You can now login.";
+          this.showMessage("Registration successful! Redirecting to login...", "success", messageEl);
+
           if (window.showToast) window.showToast("Registration successful");
+
+          // Auto redirect to login page after successful registration
+          setTimeout(() => {
+            window.location.hash = "#/login";
+          }, 2000);
+
         } else {
-          messageEl.style.color = "red";
-          messageEl.textContent = (res && res.message) || "Registration failed";
-          if (window.showToast) window.showToast(messageEl.textContent);
+          this.showMessage((res && res.message) || "Registration failed", "error", messageEl);
         }
       } catch (err) {
-        messageEl.style.color = "red";
-        messageEl.textContent = "Registration error: " + err.message;
+        console.error("Registration error:", err);
+        this.showMessage("Registration error: " + err.message, "error", messageEl);
+      } finally {
+        // Reset button state
+        registerButton.disabled = false;
+        registerButton.textContent = "Register";
+        registerButton.classList.remove('loading');
       }
     });
+  }
+
+  showMessage(message, type, messageEl) {
+    if (messageEl) {
+      messageEl.textContent = message;
+      messageEl.style.color = type === "success" ? "var(--success)" : "var(--error)";
+      messageEl.className = `form-message ${type}`;
+    }
+
+    if (window.showToast) {
+      window.showToast(message, type);
+    }
   }
 }
